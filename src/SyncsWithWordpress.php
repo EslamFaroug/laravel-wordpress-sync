@@ -1,6 +1,7 @@
 <?php
 namespace EslamFaroug\LaravelWordpressSync;
 
+use EslamFaroug\LaravelWordpressSync\Models\WordpressPost;
 use Exception;
 use GuzzleHttp\Client;
 
