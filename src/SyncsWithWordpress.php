@@ -86,7 +86,7 @@ trait SyncsWithWordpress
         if (isset($data['featured_image'])) {
             $imageId = $this->uploadImageToWordpress($client, $data['featured_image']);
             if ($imageId) {
-                $data['featured_image'] = $imageId;
+                $data['featured_media'] = $imageId;
             }
         }
 
@@ -137,7 +137,9 @@ trait SyncsWithWordpress
         }
 
         $client->delete("posts/{$this->wordpressPost->wp_post_id}");
-        $this->wordpressPost()->delete();
+        if ($this->wordpressPost){
+            $this->wordpressPost()->delete();
+        }
     }
 
     protected function uploadImageToWordpress($client, $imagePath)
