@@ -79,22 +79,17 @@ class Post extends Model implements WordpressSyncInterface
 }
 ```
 
-
 ### 3. Defining the Fields to Send to WordPress
 
 In `getWordpressFieldsMapping()`, you define the fields in the `Post` model that you want to send to WordPress and the corresponding fields in WordPress.
-
 
 ### 4. Defining the Sync Condition
 
 In `shouldSyncWithWordpress()`, you define a specific condition that must be met for the post to be sent to WordPress. For example, syncing may occur only if the `publish` status is `true` and the `views` count is greater than 100.
 
-
 ### 5. Defining the Status Field
 
 In `getStatusField()`, you define the name of the status field in the `Post` model. This field will be used to determine whether the post will be published (`publish`) or saved as a draft (`draft`) in WordPress.
-
-
 
 ### 6. Configuring the WordPress API Settings
 
@@ -114,11 +109,27 @@ WORDPRESS_PASSWORD=your-application-password
 
 These environment variables will be used by the package to connect to your WordPress site.
 
-### 7. Testing the Sync
+### 7. Setting Up Migrations and Service Provider
 
+The package includes migrations to create necessary database tables for managing WordPress posts. To ensure these migrations are run in your Laravel application, make sure the `LaravelWordpressSyncServiceProvider` is registered.
+
+You can publish the migrations using the following command:
+
+```bash
+php artisan vendor:publish --tag=migrations
+```
+
+This will copy the migration files to your application's `database/migrations` directory. Once published, you can run the migrations with:
+
+```bash
+php artisan migrate
+```
+
+Alternatively, the migrations will be automatically loaded from the package when you run the migrate command if you prefer not to publish them.
+
+### 8. Testing the Sync
 
 After completing these steps, posts will automatically sync with WordPress when they are created, updated, or deleted, based on the conditions defined in the `Post` model.
-
 
 ## License
 
