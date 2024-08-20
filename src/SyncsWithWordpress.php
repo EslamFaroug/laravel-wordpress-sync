@@ -123,21 +123,13 @@ trait SyncsWithWordpress
 
     protected function updatePostInWordpress($client, $data)
     {
-        if (!$this->wordpressPost) {
-            throw new \Exception('Wordpress post ID is missing for update.');
-        }
-
         $client->put("posts/{$this->wordpressPost->wp_post_id}", ['json' => $data]);
     }
 
     protected function deletePostFromWordpress($client)
     {
-        if (!$this->wordpressPost) {
-            throw new \Exception('Wordpress post ID is missing for deletion.');
-        }
-
         $client->delete("posts/{$this->wordpressPost->wp_post_id}");
-        if ($this->wordpressPost){
+        if ($this->wordpressPost) {
             $this->wordpressPost()->delete();
         }
     }
