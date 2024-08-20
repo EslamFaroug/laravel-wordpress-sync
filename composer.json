@@ -25,6 +25,13 @@
       "url": "https://github.com/eslamfaroug/laravel-wordpress-sync.git"
     }
   ],
+  "extra": {
+    "laravel": {
+      "providers": [
+        "EslamFaroug\\LaravelWordpressSync\\LaravelWordpressSyncServiceProvider"
+      ]
+    }
+  },
   "license": "MIT",
   "minimum-stability": "stable",
   "prefer-stable": true

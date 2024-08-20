@@ -1,8 +1,8 @@
 <?php
 namespace EslamFaroug\LaravelWordpressSync;
 
-use GuzzleHttp\Client;
 use Exception;
+use GuzzleHttp\Client;
 
 trait SyncsWithWordpress
 {
@@ -65,16 +65,22 @@ trait SyncsWithWordpress
         $data['status'] = $this->{$statusField} === 'true' ? 'publish' : 'draft';
 
         if ($action === 'create') {
-            $response = $client->post('posts', [
-                'json' => $data,
-            ]);
+            $response = $client->post('posts', ['json' => $data]);
+            $body = json_decode($response->getBody(), true);
+
+            $wordpressPost = new WordpressPost(['wp_post_id' => $body['id']]);
+            $this->wordpressPost()->save($wordpressPost);
         } elseif ($action === 'update') {
-            $response = $client->put("posts/{$this->id}", [
-                'json' => $data,
-            ]);
+            $client->put("posts/{$this->wordpressPost->wp_post_id}", ['json' => $data]);
         } elseif ($action === 'delete') {
-            $client->delete("posts/{$this->id}");
+            $client->delete("posts/{$this->wordpressPost->wp_post_id}");
+            $this->wordpressPost()->delete();
         }
+    }
+
+    public function wordpressPost()
+    {
+        return $this->morphOne(WordpressPost::class, 'postable');
     }
 
     /**
