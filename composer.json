@@ -1,0 +1,32 @@
+{
+  "name": "eslamfaroug/laravel-wordpress-sync",
+  "description": "A Laravel package to sync articles with WordPress via API based on language.",
+  "type": "library",
+  "autoload": {
+    "psr-4": {
+      "EslamFaroug\\LaravelWordpressSync\\": "src/"
+    }
+  },
+  "require": {
+    "php": ">=7.4",
+    "illuminate/support": "^8.0|^9.0",
+    "guzzlehttp/guzzle": "^7.0"
+  },
+  "authors": [
+    {
+      "name": "Eslam Faroug",
+      "email": "eslamfaroug3@gmail.com",
+      "homepage": "https://github.com/eslamfaroug",
+      "role": "Developer"
+    }
+  ],
+  "repositories": [
+    {
+      "type": "vcs",
+      "url": "https://github.com/eslamfaroug/laravel-wordpress-sync.git"
+    }
+  ],
+  "license": "MIT",
+  "minimum-stability": "stable",
+  "prefer-stable": true
+}
