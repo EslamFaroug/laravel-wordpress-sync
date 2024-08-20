@@ -36,45 +36,113 @@ trait SyncsWithWordpress
 
         $statusField = $this->getStatusField();
 
-        if (!isset($this->{$statusField})) {
-            throw new Exception("The status field '{$statusField}' must be defined in the model.");
-        }
+        $this->validateStatusField($statusField);
 
-        $baseUrl = env('WORDPRESS_URL');
-        $apiPath = env('WORDPRESS_PATH');
+        $client = $this->createHttpClient();
+
+        $data = $this->prepareDataForSync($statusField);
+
+        try {
+            $this->performAction($client, $action, $data);
+        } catch (\GuzzleHttp\Exception\ClientException $e) {
+            $this->handleClientException($e);
+        }
+    }
+
+    protected function validateStatusField($statusField)
+    {
+        if (!isset($this->{$statusField})) {
+            throw new \Exception("The status field '{$statusField}' must be defined in the model.");
+        }
+    }
+
+    protected function createHttpClient()
+    {
+        $baseUrl = rtrim(env('WORDPRESS_URL'), '/');
+        $apiPath = ltrim(env('WORDPRESS_PATH'), '/');
         $username = env('WORDPRESS_USERNAME');
         $password = env('WORDPRESS_PASSWORD');
 
-        $client = new Client([
-            'base_uri' => rtrim($baseUrl, '/') . '/' . ltrim($apiPath, '/'),
+        return new \GuzzleHttp\Client([
+            'base_uri' => "{$baseUrl}/{$apiPath}",
             'auth' => [$username, $password],
         ]);
+    }
 
-
+    protected function prepareDataForSync($statusField)
+    {
         $fieldsMapping = $this->getWordpressFieldsMapping();
-
         $data = [];
+
         foreach ($fieldsMapping as $wpField => $modelField) {
             if (isset($this->{$modelField})) {
                 $data[$wpField] = $this->{$modelField};
             } else {
-                throw new Exception("The model field '{$modelField}' is not defined.");
+                throw new \Exception("The model field '{$modelField}' is not defined.");
             }
         }
 
         $data['status'] = $this->{$statusField} === 'true' ? 'publish' : 'draft';
 
-        if ($action === 'create') {
-            $response = $client->post('posts', ['json' => $data]);
-            $body = json_decode($response->getBody(), true);
+        return $data;
+    }
 
-            $wordpressPost = new WordpressPost(['wp_post_id' => $body['id']]);
-            $this->wordpressPost()->save($wordpressPost);
-        } elseif ($action === 'update') {
-            $client->put("posts/{$this->wordpressPost->wp_post_id}", ['json' => $data]);
-        } elseif ($action === 'delete') {
-            $client->delete("posts/{$this->wordpressPost->wp_post_id}");
-            $this->wordpressPost()->delete();
+    protected function performAction($client, $action, $data)
+    {
+        switch ($action) {
+            case 'create':
+                $this->createPostInWordpress($client, $data);
+                break;
+            case 'update':
+                $this->updatePostInWordpress($client, $data);
+                break;
+            case 'delete':
+                $this->deletePostFromWordpress($client);
+                break;
+            default:
+                throw new \InvalidArgumentException("Invalid action: {$action}");
+        }
+    }
+
+    protected function createPostInWordpress($client, $data)
+    {
+        $response = $client->post('posts', ['json' => $data]);
+        $body = json_decode($response->getBody(), true);
+
+        $wordpressPost = new WordpressPost(['wp_post_id' => $body['id']]);
+        $this->wordpressPost()->save($wordpressPost);
+    }
+
+    protected function updatePostInWordpress($client, $data)
+    {
+        if (!$this->wordpressPost) {
+            throw new \Exception('Wordpress post ID is missing for update.');
+        }
+
+        $client->put("posts/{$this->wordpressPost->wp_post_id}", ['json' => $data]);
+    }
+
+    protected function deletePostFromWordpress($client)
+    {
+        if (!$this->wordpressPost) {
+            throw new \Exception('Wordpress post ID is missing for deletion.');
+        }
+
+        $client->delete("posts/{$this->wordpressPost->wp_post_id}");
+        $this->wordpressPost()->delete();
+    }
+
+    protected function handleClientException(\GuzzleHttp\Exception\ClientException $e)
+    {
+
+        $responseBody = $e->getResponse()->getBody()->getContents();
+        $errorData = json_decode($responseBody, true);
+
+        if (isset($errorData['code']) && $errorData['message']) {
+            dd($errorData);
+            throw $errorData;
+        } else {
+            throw $e; // Re-throw the exception if it's not handled
         }
     }
 
