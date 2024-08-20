@@ -41,7 +41,7 @@ trait SyncsWithWordpress
 
         $client = $this->createHttpClient();
 
-        $data = $this->prepareDataForSync($statusField);
+        $data = $this->prepareDataForSync($statusField,$client);
 
         try {
             $this->performAction($client, $action, $data);
@@ -70,7 +70,7 @@ trait SyncsWithWordpress
         ]);
     }
 
-    protected function prepareDataForSync($statusField)
+    protected function prepareDataForSync($statusField,$client)
     {
         $fieldsMapping = $this->getWordpressFieldsMapping();
         $data = [];
@@ -80,6 +80,13 @@ trait SyncsWithWordpress
                 $data[$wpField] = $this->{$modelField};
             } else {
                 throw new \Exception("The model field '{$modelField}' is not defined.");
+            }
+        }
+
+        if (isset($data['featured_image'])) {
+            $imageId = $this->uploadImageToWordpress($client, $data['featured_image']);
+            if ($imageId) {
+                $data['featured_image'] = $imageId;
             }
         }
 
@@ -131,6 +138,29 @@ trait SyncsWithWordpress
 
         $client->delete("posts/{$this->wordpressPost->wp_post_id}");
         $this->wordpressPost()->delete();
+    }
+
+    protected function uploadImageToWordpress($client, $imagePath)
+    {
+        try {
+            $imageData = fopen($imagePath, 'r');
+            $response = $client->post('media', [
+                'headers' => [
+                    'Content-Disposition' => 'attachment; filename="' . basename($imagePath) . '"',
+                ],
+                'body' => $imageData,
+            ]);
+
+            $body = json_decode($response->getBody(), true);
+            return $body['id'] ?? null;
+
+        } catch (\GuzzleHttp\Exception\RequestException $e) {
+            echo $e->getMessage();
+            if ($e->hasResponse()) {
+                echo $e->getResponse()->getBody();
+            }
+            return null;
+        }
     }
 
     protected function handleClientException(\GuzzleHttp\Exception\ClientException $e)
