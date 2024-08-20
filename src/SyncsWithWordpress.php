@@ -123,15 +123,20 @@ trait SyncsWithWordpress
 
     protected function updatePostInWordpress($client, $data)
     {
+        if (!$this->wordpressPost) {
+            return true;
+        }
         $client->put("posts/{$this->wordpressPost->wp_post_id}", ['json' => $data]);
     }
 
     protected function deletePostFromWordpress($client)
     {
-        $client->delete("posts/{$this->wordpressPost->wp_post_id}");
-        if ($this->wordpressPost) {
-            $this->wordpressPost()->delete();
+        if (!$this->wordpressPost) {
+            return true;
         }
+        $client->delete("posts/{$this->wordpressPost->wp_post_id}");
+        $this->wordpressPost()->delete();
+
     }
 
     protected function uploadImageToWordpress($client, $imagePath)
