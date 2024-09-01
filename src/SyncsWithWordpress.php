@@ -185,7 +185,7 @@ trait SyncsWithWordpress
             return true;
         }
         $client->post("posts/{$this->wordpressPost->wp_post_id}", [
-            'json' => ['status' => 'trash']
+            'json' => ['status' => 'draft']
         ]);
     }
 
