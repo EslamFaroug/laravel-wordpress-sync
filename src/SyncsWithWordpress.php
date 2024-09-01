@@ -1,4 +1,5 @@
 <?php
+
 namespace EslamFaroug\LaravelWordpressSync;
 
 use EslamFaroug\LaravelWordpressSync\Models\WordpressPost;
@@ -41,7 +42,7 @@ trait SyncsWithWordpress
 
         $client = $this->createHttpClient();
 
-        $data = $this->prepareDataForSync($statusField,$client);
+        $data = $this->prepareDataForSync($statusField, $client);
 
         try {
             $this->performAction($client, $action, $data);
@@ -49,6 +50,20 @@ trait SyncsWithWordpress
             $this->handleClientException($e);
         }
     }
+
+    /**
+     * Determine if the model should sync with WordPress.
+     *
+     * @return bool
+     */
+    abstract public function shouldSyncWithWordpress();
+
+    /**
+     * Get the name of the status field in the model.
+     *
+     * @return string
+     */
+    abstract public function getStatusField();
 
     protected function validateStatusField($statusField)
     {
@@ -70,7 +85,7 @@ trait SyncsWithWordpress
         ]);
     }
 
-    protected function prepareDataForSync($statusField,$client)
+    protected function prepareDataForSync($statusField, $client)
     {
         $fieldsMapping = $this->getWordpressFieldsMapping();
         $data = [];
@@ -93,6 +108,36 @@ trait SyncsWithWordpress
         $data['status'] = $this->{$statusField} === 'true' ? 'publish' : 'draft';
 
         return $data;
+    }
+
+    /**
+     * Get the mapping of WordPress fields to model fields.
+     *
+     * @return array
+     */
+    abstract public function getWordpressFieldsMapping();
+
+    protected function uploadImageToWordpress($client, $imagePath)
+    {
+        try {
+            $imageData = fopen($imagePath, 'r');
+            $response = $client->post('media', [
+                'headers' => [
+                    'Content-Disposition' => 'attachment; filename="' . basename($imagePath) . '"',
+                ],
+                'body' => $imageData,
+            ]);
+
+            $body = json_decode($response->getBody(), true);
+            return $body['id'] ?? null;
+
+        } catch (\GuzzleHttp\Exception\RequestException $e) {
+            echo $e->getMessage();
+            if ($e->hasResponse()) {
+                echo $e->getResponse()->getBody();
+            }
+            return null;
+        }
     }
 
     protected function performAction($client, $action, $data)
@@ -121,6 +166,11 @@ trait SyncsWithWordpress
         $this->wordpressPost()->save($wordpressPost);
     }
 
+    public function wordpressPost()
+    {
+        return $this->morphOne(WordpressPost::class, 'postable');
+    }
+
     protected function updatePostInWordpress($client, $data)
     {
         if (!$this->wordpressPost) {
@@ -134,32 +184,9 @@ trait SyncsWithWordpress
         if (!$this->wordpressPost) {
             return true;
         }
-        $client->delete("posts/{$this->wordpressPost->wp_post_id}");
-        $this->wordpressPost()->delete();
-
-    }
-
-    protected function uploadImageToWordpress($client, $imagePath)
-    {
-        try {
-            $imageData = fopen($imagePath, 'r');
-            $response = $client->post('media', [
-                'headers' => [
-                    'Content-Disposition' => 'attachment; filename="' . basename($imagePath) . '"',
-                ],
-                'body' => $imageData,
-            ]);
-
-            $body = json_decode($response->getBody(), true);
-            return $body['id'] ?? null;
-
-        } catch (\GuzzleHttp\Exception\RequestException $e) {
-            echo $e->getMessage();
-            if ($e->hasResponse()) {
-                echo $e->getResponse()->getBody();
-            }
-            return null;
-        }
+        $client->post("posts/{$this->wordpressPost->wp_post_id}", [
+            'json' => ['status' => 'trash']
+        ]);
     }
 
     protected function handleClientException(\GuzzleHttp\Exception\ClientException $e)
@@ -175,30 +202,4 @@ trait SyncsWithWordpress
             throw $e; // Re-throw the exception if it's not handled
         }
     }
-
-    public function wordpressPost()
-    {
-        return $this->morphOne(WordpressPost::class, 'postable');
-    }
-
-    /**
-     * Get the mapping of WordPress fields to model fields.
-     *
-     * @return array
-     */
-    abstract public function getWordpressFieldsMapping();
-
-    /**
-     * Determine if the model should sync with WordPress.
-     *
-     * @return bool
-     */
-    abstract public function shouldSyncWithWordpress();
-
-    /**
-     * Get the name of the status field in the model.
-     *
-     * @return string
-     */
-    abstract public function getStatusField();
 }
