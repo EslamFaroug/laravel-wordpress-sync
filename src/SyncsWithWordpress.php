@@ -4,21 +4,20 @@ namespace EslamFaroug\LaravelWordpressSync;
 
 use EslamFaroug\LaravelWordpressSync\Models\WordpressPost;
 use Exception;
-use GuzzleHttp\Client;
 
 trait SyncsWithWordpress
 {
     protected static function bootSyncsWithWordpress()
     {
-        static::creating(function (WordpressSyncInterface $model) {
+        static::created(function (WordpressSyncInterface $model) {
             $model->syncWithWordpress('create');
         });
 
-        static::updating(function (WordpressSyncInterface $model) {
+        static::updated(function (WordpressSyncInterface $model) {
             $model->syncWithWordpress('update');
         });
 
-        static::deleting(function (WordpressSyncInterface $model) {
+        static::deleted(function (WordpressSyncInterface $model) {
             $model->syncWithWordpress('delete');
         });
     }
@@ -42,8 +41,8 @@ trait SyncsWithWordpress
 
         $client = $this->createHttpClient();
 
-        $data = $this->prepareDataForSync($statusField, $client);
 
+        $data = $this->prepareDataForSync($statusField, $client);
         try {
             $this->performAction($client, $action, $data);
         } catch (\GuzzleHttp\Exception\ClientException $e) {
@@ -67,7 +66,7 @@ trait SyncsWithWordpress
 
     protected function validateStatusField($statusField)
     {
-        if (!isset($this->{$statusField})) {
+        if (!isset($statusField)) {
             throw new \Exception("The status field '{$statusField}' must be defined in the model.");
         }
     }
@@ -120,16 +119,19 @@ trait SyncsWithWordpress
     protected function uploadImageToWordpress($client, $imagePath)
     {
         try {
-            $imageData = fopen($imagePath, 'r');
-            $response = $client->post('media', [
-                'headers' => [
-                    'Content-Disposition' => 'attachment; filename="' . basename($imagePath) . '"',
-                ],
-                'body' => $imageData,
-            ]);
+            if (file_exists($imagePath)) {
+                $imageData = fopen($imagePath, 'r');
+                $response = $client->post('media', [
+                    'headers' => [
+                        'Content-Disposition' => 'attachment; filename="' . basename($imagePath) . '"',
+                    ],
+                    'body' => $imageData,
+                ]);
 
-            $body = json_decode($response->getBody(), true);
-            return $body['id'] ?? null;
+                $body = json_decode($response->getBody(), true);
+                return $body['id'] ?? null;
+            }
+            return null;
 
         } catch (\GuzzleHttp\Exception\RequestException $e) {
             echo $e->getMessage();
@@ -163,6 +165,7 @@ trait SyncsWithWordpress
         $body = json_decode($response->getBody(), true);
 
         $wordpressPost = new WordpressPost(['wp_post_id' => $body['id']]);
+
         $this->wordpressPost()->save($wordpressPost);
     }
 
